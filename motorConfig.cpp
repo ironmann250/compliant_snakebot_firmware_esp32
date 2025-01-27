@@ -7,8 +7,8 @@ ESP32MotorControl motorControl; // <-- Global instance defined here
 void motorInit(int enc1A, int enc1B, int enc2A, int enc2B,
               int ain1_1, int ain1_2, int ain2_1, int ain2_2,
               int sleepPin, bool resetCounts, float pulsesPerRev) {
-    // Initialize encoder system
-    trackEncoder = new TrackEncoder(enc1A, enc1B, enc2A, enc2B, "encoderStorage");
+    // Update TrackEncoder instantiation
+    trackEncoder = new TrackEncoder(enc1A, enc1B, enc2A, enc2B, "encoderStorage", pulsesPerRev);
     trackEncoder->begin(200);
     
     if(resetCounts) {
@@ -38,8 +38,8 @@ void MotorPID::init(const Config& config) {
 }
 
 void MotorPID::update() {
-    Input = (motorNum == 0) ? trackEncoder->getEncoder1Count() 
-                            : trackEncoder->getEncoder2Count();
+    Input = (motorNum == 0) ? trackEncoder->getEncoder2Count() 
+                            : trackEncoder->getEncoder1Count();
     updatePID();
     controlMotor();
 }

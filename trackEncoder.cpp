@@ -1,6 +1,7 @@
 #include "TrackEncoder.h"
 
-TrackEncoder::TrackEncoder(uint8_t pinA1, uint8_t pinB1, uint8_t pinA2, uint8_t pinB2, const char *nvsNamespace) {
+TrackEncoder::TrackEncoder(uint8_t pinA1, uint8_t pinB1, uint8_t pinA2, uint8_t pinB2, const char *nvsNamespace, float pulsesPerRev) 
+    : pulsesPerRev(pulsesPerRev){
     // Initialize preferences for NVS
     if (!preferences.begin(nvsNamespace, false)) {
         Serial.println("Failed to initialize NVS");
@@ -42,30 +43,17 @@ void TrackEncoder::begin(uint32_t timerIntervalMs) {
         1                       // CPU core (1 = second CPU)
     );
 
-    // Timer initialization with error checking
-    timer = timerBegin(0, 80, true);  // Use timer 0, prescaler 80, count up
-    if (timer == nullptr) {
-        Serial.println("Failed to initialize timer!");
-        return;
-    }
+    // Calculate the timer frequency and configure the timer
+    const uint32_t baseFrequency = 80000000; // 80 MHz (ESP32 APB clock)
+    const uint32_t prescaler = 80;           // 1 MHz (1 µs resolution)
+    const uint32_t desiredFrequency = baseFrequency / prescaler;
+    const uint64_t triggerPeriod = (uint64_t)timerIntervalMs * desiredFrequency / 1000; // Timer interval in ticks
 
-    if (!timerAttachInterrupt(timer, &timerISR, true)) {  // Edge triggered
-        Serial.println("Failed to attach timer interrupt!");
-        return;
-    }
-
-    uint64_t alarmValue = (uint64_t)timerIntervalMs * 1000;  // Convert to microseconds
-    if (!timerAlarmWrite(timer, alarmValue, true)) {  // Auto-reload enabled
-        Serial.println("Failed to set timer alarm!");
-        return;
-    }
-
-    if (!timerAlarmEnable(timer)) {
-        Serial.println("Failed to enable timer alarm!");
-        return;
-    }
-
-    Serial.println("Timer initialization complete");
+    // Initialize the timer with the calculated frequency
+    timer = timerBegin(desiredFrequency);
+    timerAttachInterruptArg(timer, timerISR, this);
+    timerAlarm(timer, triggerPeriod, true, 0); // Set the timer alarm
+    timerStart(timer);
 }
 
 int64_t TrackEncoder::getEncoder1Count() {
@@ -131,3 +119,13 @@ void IRAM_ATTR TrackEncoder::timerISR(void *arg) {
 // Task to save encoder counts to NVS
 void TrackEncoder::saveTask(void *parameter) {
     auto *instance = static_cast<TrackEncoder *>(parameter);
+    int64_t counts[2];
+
+    while (true) {
+        if (xQueueReceive(instance->encoderQueue, &counts, portMAX_DELAY)) {
+            instance->preferences.putLong("encoder1", counts[0]);
+            instance->preferences.putLong("encoder2", counts[1]);
+        }
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}

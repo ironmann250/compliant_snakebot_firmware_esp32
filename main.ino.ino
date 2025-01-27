@@ -2,7 +2,7 @@
 #define ENCODER1_PIN_B 2
 #define ENCODER2_PIN_A 11
 #define ENCODER2_PIN_B 12
-#define RESET_COUNT_ON_BOOT 0
+#define RESET_COUNT_ON_BOOT 1
 
 #define LED_PIN 7
 #define PWM_2 41

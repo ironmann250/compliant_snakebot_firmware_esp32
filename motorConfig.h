@@ -5,6 +5,10 @@
 #include <QuickPID.h>
 #define BRAKING_THRESHOLD 2
 
+void motorInit(int enc1A, int enc1B, int enc2A, int enc2B,
+              int ain1_1, int ain1_2, int ain2_1, int ain2_2,
+              int sleepPin, bool resetCounts, float pulsesPerRev);
+
 class MotorPID {
 public:
     // Configuration

@@ -8,7 +8,7 @@
 
 class TrackEncoder {
 public:
-    TrackEncoder(uint8_t pinA1, uint8_t pinB1, uint8_t pinA2, uint8_t pinB2, const char *nvsNamespace);
+     TrackEncoder(uint8_t pinA1, uint8_t pinB1, uint8_t pinA2, uint8_t pinB2, const char *nvsNamespace, float pulsesPerRev);
     ~TrackEncoder();
 
     void begin(uint32_t timerIntervalMs);
@@ -25,6 +25,7 @@ public:
 
 
 private:
+    float pulsesPerRev;
     ESP32Encoder encoder1, encoder2;
     Preferences preferences;
 
