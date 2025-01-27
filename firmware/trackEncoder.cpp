@@ -40,7 +40,7 @@ void TrackEncoder::begin(uint32_t timerIntervalMs) {
         this,                   // Parameter to pass to the task
         1,                      // Priority
         &saveTaskHandle,        // Task handle
-        1                       // CPU core (1 = second CPU)
+        0                       // CPU core (1 = second CPU)
     );
 
     // Calculate the timer frequency and configure the timer
