@@ -1,13 +1,23 @@
-#ifndef BLE_COM_H
-#define BLE_COM_H
-
+#pragma once
 #include <BLESerial.h>
-#include "motorConfig.h"
+#include <etl/circular_buffer.h>
+#include <mutex>
 
-// Initialize BLESerial
-extern BLESerial<etl::circular_buffer<uint8_t, 255>> SerialBLE;
+class MotorPID;
+extern MotorPID motor1, motor2;
 
-void initBLE();
-void bleUpdate(MotorPID &motor1, MotorPID &motor2);
+class BLECom {
+public:
+    static void init();
+    static void update();
 
-#endif // BLE_COM_H
+private:
+    static BLESerial<etl::circular_buffer<uint8_t, 255>> SerialBLE;
+    static std::mutex ble_mutex;  // Mutex for thread safety
+    static String buffer;
+    static constexpr float MAX_SETPOINT = 360.0f;
+    static constexpr float MIN_SETPOINT = -360.0f;
+    
+    static void handleCommand(const String& command);
+    static void processCharacter(char c);
+};

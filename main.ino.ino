@@ -15,7 +15,6 @@
 #include <Arduino.h>
 #include "motorConfig.h"
 #include "tuning.h"
-#include "bleCom.h"
 
 MotorPID motor1, motor2;
 TuneSet<> tuning;
@@ -50,20 +49,17 @@ void setup() {
 
     motor1.setSetpointDeg(0.0f);
     motor2.setSetpointDeg(0.0f);
-    BLECom::init();
-
+    
     Serial.println("Setup complete");
 }
 
 void loop() {
     tuning.readSerial();
-    BLECom::update();
+    
     // Update both motors
     motor1.update();
     motor2.update();
-    static uint32_t lastPrint = 0;
-    if(millis() - lastPrint > 20) { // Throttle printing
-        lastPrint = millis();
+
     // Serial print statements remain unchanged
     Serial.print(motor1.Setpoint); Serial.print("\t");
     Serial.print(motor1.Input);    Serial.print("\t");
@@ -78,6 +74,6 @@ void loop() {
     Serial.print(motor2.Kp);       Serial.print("\t");
     Serial.print(motor2.Ki);       Serial.print("\t");
     Serial.println(motor2.Kd);
-    }
-    //delay(10);
+    
+    delay(10);
 }

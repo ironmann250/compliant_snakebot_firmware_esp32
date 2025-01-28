@@ -52,7 +52,7 @@ void setup() {
     motor2.setSetpointDeg(0.0f);
 
     // Initialize BLE
-    initBLE();
+    BLECom::init();
     
     Serial.println("Setup complete");
 }
@@ -65,7 +65,7 @@ void loop() {
     motor2.update();
 
     // Update BLE communication
-    bleUpdate(motor1, motor2);
+    BLECom::update();
 
     // Serial print statements remain unchanged
     Serial.print(motor1.Setpoint); Serial.print("\t");
