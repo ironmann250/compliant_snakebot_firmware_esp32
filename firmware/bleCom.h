@@ -1,17 +1,25 @@
-#ifndef BLE_COM_H
-#define BLE_COM_H
-
-#include <Arduino.h>
+#pragma once
+#include <BLESerial.h>
 #include <Embedded_Template_Library.h>
+#include <etl/circular_buffer.h>
+#include <mutex>
+#include "motorConfig.h" 
+class MotorPID;
+extern MotorPID motor1, motor2;
 
-struct Command {
-    char cmd;
-    float value;
-    Command(char c = 0, float v = 0.0f) : cmd(c), value(v) {}
+class BLECom {
+public:
+    static void init();
+    static void update();
+    static bool debugEnabled;  // Add debug flag
+
+private:
+    static BLESerial<etl::circular_buffer<uint8_t, 255>> SerialBLE;
+    static std::mutex ble_mutex;
+    static String buffer;
+    static constexpr float MAX_SETPOINT = 360.0f;
+    static constexpr float MIN_SETPOINT = -360.0f;
+    
+    static void handleCommand(const String& command);
+    static void processCharacter(char c);
 };
-
-void initBLE(const char* deviceName);
-Command updateBLE();
-void blePrintf(const char *fmt, ...);
-
-#endif
