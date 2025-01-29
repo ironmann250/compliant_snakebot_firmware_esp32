@@ -9,7 +9,7 @@ void motorInit(int enc1A, int enc1B, int enc2A, int enc2B,
               int sleepPin, bool resetCounts, float pulsesPerRev) {
     // Update TrackEncoder instantiation
     trackEncoder = new TrackEncoder(enc1A, enc1B, enc2A, enc2B, "encoderStorage", pulsesPerRev);
-    trackEncoder->begin(200);
+    trackEncoder->begin(200); 
     
     if(resetCounts) {
         trackEncoder->resetCounts();
@@ -76,14 +76,7 @@ void MotorPID::update() {
 
 
 void MotorPID::setSetpointDeg(float degrees) {
-    std::lock_guard<std::mutex> lock(motor_mutex);
-    
-    float newSetpoint = (degrees * cfg.pulsesPerRev) / 360.0f;
-    Serial.printf("[Motor%d] Setpoint update:\n", motorNum+1);
-    Serial.printf("  Degrees: %.2f → Pulses: %.2f (PPR: %.2f)\n", 
-                 degrees, newSetpoint, cfg.pulsesPerRev);
-    
-    Setpoint = newSetpoint;
+    Setpoint = (degrees * cfg.pulsesPerRev) / 360.0f;
 }
 
 void MotorPID::goTo(float var) {

@@ -5,10 +5,6 @@
 #include <QuickPID.h>
 #define BRAKING_THRESHOLD 2
 
-#include <mutex>
-#include <chrono>
-
-extern std::timed_mutex motor_mutex;
 
 void motorInit(int enc1A, int enc1B, int enc2A, int enc2B,
               int ain1_1, int ain1_2, int ain2_1, int ain2_2,

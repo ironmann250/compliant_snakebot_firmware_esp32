@@ -121,7 +121,4 @@ void debugPrint()
     blePrintf("%d,%d\n",motor1.Setpoint,motor2.Setpoint);
 }
 
-    }
-    //delay(10);
-}
-
+    
