@@ -48,6 +48,11 @@ void MotorPID::setSetpointDeg(float degrees) {
     Setpoint = (degrees * cfg.pulsesPerRev) / 360.0f;
 }
 
+void MotorPID::goTo(float var) {
+    Setpoint = var;
+    update();
+}
+
 void MotorPID::updatePID() {
     if(pid.GetKp() != Kp || pid.GetKi() != Ki || pid.GetKd() != Kd) {
         pid.SetTunings(Kp, Ki, Kd);

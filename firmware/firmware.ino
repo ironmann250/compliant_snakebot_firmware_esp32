@@ -1,8 +1,8 @@
-#define ENCODER1_PIN_A 1
+ #define ENCODER1_PIN_A 1
 #define ENCODER1_PIN_B 2
 #define ENCODER2_PIN_A 11
 #define ENCODER2_PIN_B 12
-#define RESET_COUNT_ON_BOOT 1
+#define RESET_COUNT_ON_BOOT 0
 
 #define LED_PIN 7
 #define PWM_2 41
@@ -15,9 +15,13 @@
 #include <Arduino.h>
 #include "motorConfig.h"
 #include "tuning.h"
+#include "bleCom.h"
 
 MotorPID motor1, motor2;
 TuneSet<> tuning;
+
+unsigned long previousMillis = 0;
+const long interval = 10;  // interval in milliseconds
 
 void setup() {
     Serial.begin(115200);
@@ -50,17 +54,51 @@ void setup() {
     motor1.setSetpointDeg(0.0f);
     motor2.setSetpointDeg(0.0f);
     
+    // Initialize BLE
+    initBLE("SnakeRobot");
+    
     Serial.println("Setup complete");
 }
 
 void loop() {
+    // Get BLE command
+    unsigned long currentMillis = millis();
+    Command cmd = updateBLE();
     tuning.readSerial();
+
+    // Handle command based on type
+    switch(cmd.cmd) {
+        case 't':  // Target position
+            motor1.Setpoint+=cmd.value;//goTo((int)cmd.value)
+            break;
+        case 'y':  // Target position
+            motor1.Setpoint-=cmd.value;//goTo((int)cmd.value)
+            break;
+        case 'p':  // Update Kp
+            motor2.Setpoint+=cmd.value;
+            break;
+        case 'o':  // Update Kp
+            motor2.Setpoint-=cmd.value;
+            break;
+        // Add more command handlers as needed
+    }
     
     // Update both motors
-    motor1.update();
-    motor2.update();
+    
 
     // Serial print statements remain unchanged
+    if (currentMillis - previousMillis >= interval) {
+        previousMillis = currentMillis;
+        motor1.update();
+        motor2.update();
+        debugPrint();
+    }
+    //delay(10);
+}
+
+
+void debugPrint()
+{
     Serial.print(motor1.Setpoint); Serial.print("\t");
     Serial.print(motor1.Input);    Serial.print("\t");
     Serial.print(motor1.Output);   Serial.print("\t");
@@ -74,6 +112,6 @@ void loop() {
     Serial.print(motor2.Kp);       Serial.print("\t");
     Serial.print(motor2.Ki);       Serial.print("\t");
     Serial.println(motor2.Kd);
-    
-    delay(10);
+
+    blePrintf("%d,%d\n",motor1.Setpoint,motor2.Setpoint);
 }
