@@ -12,6 +12,5 @@ struct Command {
 
 void initBLE(const char* deviceName);
 Command updateBLE();
-void blePrintf(const char *fmt, ...);
 
 #endif
