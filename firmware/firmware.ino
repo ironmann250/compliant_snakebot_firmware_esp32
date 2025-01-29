@@ -56,7 +56,7 @@ void setup() {
     
     // Initialize BLE
     initBLE("SnakeRobot");
-    
+    motor1.startSinusoidalOscillation(0.3f, 180.0f);
     Serial.println("Setup complete");
 }
 
@@ -84,12 +84,15 @@ void loop() {
     }
     
     // Update both motors
-    
+     if(motor1.isOscillating()) {
+        // Update motor (oscillation is handled in update())
+        motor1.update();
+    }
 
     // Serial print statements remain unchanged
     if (currentMillis - previousMillis >= interval) {
         previousMillis = currentMillis;
-        motor1.update();
+        //motor1.update();
         motor2.update();
         debugPrint();
     }

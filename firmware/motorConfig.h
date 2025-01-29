@@ -31,12 +31,21 @@ public:
     void update();
     void setSetpointDeg(float degrees);
     void goTo(float var);
+    void startSinusoidalOscillation(float frequencyHz, float amplitudeDeg, float phaseOffset = 0.0f, uint32_t durationMs = 0);
+    void stopSinusoidalOscillation();
+    bool isOscillating() const { return oscillationActive; }
 
 private:
     QuickPID pid;
     ESP32MotorControl* motorControl = nullptr; // Initialize to nullptr
     int motorNum = 0; // Default to motor 0
     Config cfg;
+    float oscillationFrequency = 0.0f;
+    float oscillationAmplitude = 0.0f;
+    float oscillationPhase = 0.0f;
+    uint32_t oscillationDuration = 0;
+    uint32_t oscillationStartTime = 0;
+    bool oscillationActive = false;
     
     void updatePID();
     void controlMotor();

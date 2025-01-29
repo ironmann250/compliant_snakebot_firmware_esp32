@@ -37,12 +37,43 @@ void MotorPID::init(const Config& config) {
     pid.SetMode(QuickPID::Control::automatic);
 }
 
+
+void MotorPID::startSinusoidalOscillation(float frequencyHz, float amplitudeDeg, float phaseOffset, uint32_t durationMs) {
+    oscillationFrequency = frequencyHz;
+    oscillationAmplitude = amplitudeDeg;
+    oscillationPhase = phaseOffset;
+    oscillationDuration = durationMs;
+    oscillationStartTime = millis();
+    oscillationActive = true;
+}
+
+void MotorPID::stopSinusoidalOscillation() {
+    oscillationActive = false;
+    Setpoint = Input; // Hold current position
+    update();
+}
+
 void MotorPID::update() {
+    if(oscillationActive) {
+        // Calculate sinusoidal setpoint
+        uint32_t currentTime = millis();
+        float elapsedSec = (currentTime - oscillationStartTime) / 1000.0f;
+        float angleDeg = oscillationAmplitude * sin(2 * PI * oscillationFrequency * elapsedSec + oscillationPhase);
+        
+        setSetpointDeg(angleDeg);
+        
+        // Check duration if specified
+        if(oscillationDuration > 0 && (currentTime - oscillationStartTime) >= oscillationDuration) {
+            stopSinusoidalOscillation();
+        }
+    }
+    
     Input = (motorNum == 0) ? trackEncoder->getEncoder2Count() 
                             : trackEncoder->getEncoder1Count();
     updatePID();
     controlMotor();
 }
+
 
 void MotorPID::setSetpointDeg(float degrees) {
     Setpoint = (degrees * cfg.pulsesPerRev) / 360.0f;
