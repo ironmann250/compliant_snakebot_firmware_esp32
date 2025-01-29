@@ -5,11 +5,6 @@
 #include <QuickPID.h>
 #define BRAKING_THRESHOLD 2
 
-#include <mutex>
-#include <chrono>
-
-extern std::timed_mutex motor_mutex;
-
 void motorInit(int enc1A, int enc1B, int enc2A, int enc2B,
               int ain1_1, int ain1_2, int ain2_1, int ain2_2,
               int sleepPin, bool resetCounts, float pulsesPerRev);
@@ -30,12 +25,11 @@ public:
     float Output = 0.0f;
     float Kp = 1.32f;
     float Ki = 10.28f;
-    float Kd = 0.02f;//0.10f;
+    float Kd = 0.10f;
 
     void init(const Config& config);
     void update();
     void setSetpointDeg(float degrees);
-    void goTo(float var);
 
 private:
     QuickPID pid;

@@ -1,7 +1,6 @@
 #include "motorConfig.h"
-#include <mutex>
+
 // Global motor control and encoder instances
-std::timed_mutex motor_mutex; // Update mutex type
 TrackEncoder* trackEncoder = nullptr;
 ESP32MotorControl motorControl; // <-- Global instance defined here
 
@@ -39,30 +38,14 @@ void MotorPID::init(const Config& config) {
 }
 
 void MotorPID::update() {
-    // Use try_lock_for to prevent deadlocks
-    if(motor_mutex.try_lock_for(std::chrono::milliseconds(10))) {
-        Input = (motorNum == 0) ? trackEncoder->getEncoder2Count() 
-                               : trackEncoder->getEncoder1Count();
-        updatePID();
-        controlMotor();
-        motor_mutex.unlock();
-    }
+    Input = (motorNum == 0) ? trackEncoder->getEncoder2Count() 
+                            : trackEncoder->getEncoder1Count();
+    updatePID();
+    controlMotor();
 }
 
 void MotorPID::setSetpointDeg(float degrees) {
-    std::lock_guard<std::mutex> lock(motor_mutex);
-    
-    float newSetpoint = (degrees * cfg.pulsesPerRev) / 360.0f;
-    Serial.printf("[Motor%d] Setpoint update:\n", motorNum+1);
-    Serial.printf("  Degrees: %.2f → Pulses: %.2f (PPR: %.2f)\n", 
-                 degrees, newSetpoint, cfg.pulsesPerRev);
-    
-    Setpoint = newSetpoint;
-}
-
-void MotorPID::goTo(float var) {
-    Setpoint = var;
-    update();
+    Setpoint = (degrees * cfg.pulsesPerRev) / 360.0f;
 }
 
 void MotorPID::updatePID() {

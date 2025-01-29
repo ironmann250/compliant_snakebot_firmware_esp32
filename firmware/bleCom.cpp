@@ -54,5 +54,6 @@ void blePrintf(const char *fmt, ...) {
     for(int i = 0; buf[i] != '\0'; i++) {
         SerialBLE.write(buf[i]);
         SerialBLE.flush();
+
     }
 }
