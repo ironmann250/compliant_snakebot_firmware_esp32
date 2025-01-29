@@ -1,59 +1,85 @@
 #include "bleCom.h"
-#include <BLESerial.h>
-#include <Embedded_Template_Library.h>
-#include <etl/circular_buffer.h>
-#include <stdarg.h>
+#include "motorConfig.h"
+#include <Arduino.h>
 
-// Add these at the top of your file
+bool BLECom::debugEnabled = true;  // Debug enabled by default
 
-// BLE Serial instance
-BLESerial<etl::circular_buffer<uint8_t, 255>> SerialBLE;
+extern MotorPID motor1, motor2;
 
-// Buffer for incoming data
-String inputBuffer = "";
+BLESerial<etl::circular_buffer<uint8_t, 255>> BLECom::SerialBLE;
+std::mutex BLECom::ble_mutex;
+String BLECom::buffer = "";
 
-void initBLE(const char* deviceName) {
-    SerialBLE.begin(deviceName);
+void BLECom::init() {
+    SerialBLE.begin("MotorController-BLE");
+    if(debugEnabled) Serial.println("BLE Initialized");
 }
 
-Command updateBLE() {
-    Command result;
-    
-    while (SerialBLE.available()) {
+void BLECom::update() {
+    // Process only 1 character per call to prevent blocking
+    if (SerialBLE.available()) {
         char c = SerialBLE.read();
-        
-        if (c == '[') {
-            // Start of new command
-            inputBuffer = "";
-        } else if (c == ']') {
-            // End of command, parse it
-            if (inputBuffer.length() >= 2) {
-                result.cmd = inputBuffer[0];
-                // Start parsing from position 1 to include potential negative sign
-                result.value = inputBuffer.substring(1).toFloat();
-            }
-            inputBuffer = "";
-            break;
-        } else {
-            // Add to buffer, including minus signs
-            inputBuffer += c;
+        processCharacter(c);
+    }
+}
+
+void BLECom::processCharacter(char c) {
+    // Handle various line endings
+    if (c == '\r' || c == '\n' || c == ';') {
+        if (buffer.length() > 0) {
+            std::lock_guard<std::mutex> lock(motor_mutex);
+            if(debugEnabled) Serial.printf("[BLE] Processing command: '%s'\n", buffer.c_str());
+            handleCommand(buffer);
+            buffer = "";
         }
+        return;
     }
     
-    return result;
+    if (isPrintable(c) && buffer.length() < 32) {
+        buffer += c;
+    }
 }
 
-void blePrintf(const char *fmt, ...) {
-    char buf[128];  // Static buffer for ESP32
-    va_list args;
-    va_start(args, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
+void BLECom::handleCommand(const String& command) {
+   if(motor_mutex.try_lock_for(std::chrono::milliseconds(10))) {
+    float value = 0;
+    int motorNum = -1;
+    const char* cmd = command.c_str();
     
-    // Write each character using available SerialBLE.write
-    for(int i = 0; buf[i] != '\0'; i++) {
-        SerialBLE.write(buf[i]);
-        SerialBLE.flush();
+    // Strict pattern matching
+    if (sscanf(cmd, "tar1=%f", &value) == 1) {
+        motorNum = 0;
+    } 
+    else if (sscanf(cmd, "tar2=%f", &value) == 1) {
+        motorNum = 1;
+    }
 
+    if (motorNum != -1) {
+        value = constrain(value, MIN_SETPOINT, MAX_SETPOINT);
+        MotorPID* target = (motorNum == 0) ? &motor1 : &motor2;
+        
+        // Debug before/after values
+        if(debugEnabled) {
+            Serial.printf("[MOTOR%d] Previous Setpoint: %.2f\n", 
+                         motorNum+1, target->Setpoint);
+        }
+        
+        target->setSetpointDeg(value);
+        
+        if(debugEnabled) {
+            Serial.printf("[MOTOR%d] New Setpoint: %.2f\n", 
+                         motorNum+1, target->Setpoint);
+        }
+        
+        SerialBLE.printf("OK %s=%.2f\n", 
+                        (motorNum == 0) ? "tar1" : "tar2", value);
+    } else {
+        SerialBLE.println("ERR: Invalid format");
+        if(debugEnabled) Serial.printf("[BLE] Rejected command: '%s'\n", cmd);
+    }
+
+     motor_mutex.unlock();
+    } else {
+        SerialBLE.println("ERR: System busy");
     }
 }

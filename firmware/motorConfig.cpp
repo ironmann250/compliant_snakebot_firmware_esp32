@@ -60,11 +60,6 @@ void MotorPID::setSetpointDeg(float degrees) {
     Setpoint = newSetpoint;
 }
 
-void MotorPID::goTo(float var) {
-    Setpoint = var;
-    update();
-}
-
 void MotorPID::updatePID() {
     if(pid.GetKp() != Kp || pid.GetKi() != Ki || pid.GetKd() != Kd) {
         pid.SetTunings(Kp, Ki, Kd);
