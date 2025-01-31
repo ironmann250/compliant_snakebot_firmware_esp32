@@ -1,21 +1,20 @@
 #include "motorConfig.h"
+#include <Arduino.h>
 
-// Global motor control and encoder instances
 TrackEncoder* trackEncoder = nullptr;
-ESP32MotorControl motorControl; // <-- Global instance defined here
+ESP32MotorControl motorControl;
 
 void motorInit(int enc1A, int enc1B, int enc2A, int enc2B,
               int ain1_1, int ain1_2, int ain2_1, int ain2_2,
               int sleepPin, bool resetCounts, float pulsesPerRev) {
-    // Update TrackEncoder instantiation
-    trackEncoder = new TrackEncoder(enc1A, enc1B, enc2A, enc2B, "encoderStorage", pulsesPerRev);
-    trackEncoder->begin(200); 
+    trackEncoder = new TrackEncoder(enc1A, enc1B, enc2A, enc2B, 
+                                   "encoderStorage", pulsesPerRev);
+    trackEncoder->begin(200);
     
     if(resetCounts) {
         trackEncoder->resetCounts();
     }
 
-    // Initialize motor control with correct pin assignments
     motorControl.attachMotors(ain1_1, ain1_2, ain2_1, ain2_2);
     pinMode(sleepPin, OUTPUT);
     digitalWrite(sleepPin, HIGH);
@@ -23,10 +22,9 @@ void motorInit(int enc1A, int enc1B, int enc2A, int enc2B,
 
 void MotorPID::init(const Config& config) {
     cfg = config;
-    motorControl = &::motorControl; // <-- Critical fix: Assign global instance
-    motorNum = config.motorNum;     // 0 = Motor 1, 1 = Motor 2
+    motorControl = &::motorControl;
+    motorNum = config.motorNum;
 
-    // PID initialization
     pid = QuickPID(&Input, &Output, &Setpoint, Kp, Ki, Kd,
                   QuickPID::pMode::pOnError,
                   QuickPID::dMode::dOnMeas,
@@ -37,34 +35,79 @@ void MotorPID::init(const Config& config) {
     pid.SetMode(QuickPID::Control::automatic);
 }
 
-
-void MotorPID::startSinusoidalOscillation(float frequencyHz, float amplitudeDeg, float phaseOffset, uint32_t durationMs) {
+void MotorPID::startSinusoidalOscillation(float frequencyHz, float amplitudeDeg, 
+                                        float phaseOffset, uint32_t durationMs) {
+    //portENTER_CRITICAL(&parameterMux);
     oscillationFrequency = frequencyHz;
     oscillationAmplitude = amplitudeDeg;
     oscillationPhase = phaseOffset;
     oscillationDuration = durationMs;
     oscillationStartTime = millis();
     oscillationActive = true;
+    //portEXIT_CRITICAL(&parameterMux);
 }
 
 void MotorPID::stopSinusoidalOscillation() {
+    //portENTER_CRITICAL(&parameterMux);
     oscillationActive = false;
-    Setpoint = Input; // Hold current position
+    //portEXIT_CRITICAL(&parameterMux);
+    Setpoint = Input;
     update();
+}
+
+void MotorPID::setOscillationFrequency(float newFrequencyHz) {
+    //portENTER_CRITICAL(&parameterMux);
+    uint32_t currentTime = millis();
+    float elapsed = (currentTime - oscillationStartTime) / 1000.0f;
+    float currentPhase = 2 * PI * oscillationFrequency * elapsed + oscillationPhase;
+    
+    oscillationStartTime = currentTime;
+    oscillationPhase = currentPhase - 2 * PI * newFrequencyHz * 
+                     (currentTime - oscillationStartTime) / 1000.0f;
+    oscillationFrequency = newFrequencyHz;
+    //portEXIT_CRITICAL(&parameterMux);
+}
+
+void MotorPID::setOscillationAmplitude(float newAmplitudeDeg) {
+    //portENTER_CRITICAL(&parameterMux);
+    oscillationAmplitude = newAmplitudeDeg;
+    //portEXIT_CRITICAL(&parameterMux);
+}
+
+void MotorPID::setOscillationPhase(float newPhaseOffsetRad) {
+    //portENTER_CRITICAL(&parameterMux);
+    oscillationPhase = newPhaseOffsetRad;
+    //portEXIT_CRITICAL(&parameterMux);
 }
 
 void MotorPID::update() {
     if(oscillationActive) {
-        // Calculate sinusoidal setpoint
-        uint32_t currentTime = millis();
-        float elapsedSec = (currentTime - oscillationStartTime) / 1000.0f;
-        float angleDeg = oscillationAmplitude * sin(2 * PI * oscillationFrequency * elapsedSec + oscillationPhase);
+        // Capture current parameters atomically
+        float currentFreq, currentAmp, currentPhase;
+        uint32_t startTime, duration;
+        bool active;
         
-        setSetpointDeg(angleDeg);
-        
-        // Check duration if specified
-        if(oscillationDuration > 0 && (currentTime - oscillationStartTime) >= oscillationDuration) {
-            stopSinusoidalOscillation();
+        //portENTER_CRITICAL(&parameterMux);
+        currentFreq = oscillationFrequency;
+        currentAmp = oscillationAmplitude;
+        currentPhase = oscillationPhase;
+        startTime = oscillationStartTime;
+        duration = oscillationDuration;
+        active = oscillationActive;
+        //portEXIT_CRITICAL(&parameterMux);
+
+        if(active) {
+            uint32_t currentTime = millis();
+            float elapsedSec = (currentTime - startTime) / 1000.0f;
+            float angleDeg = currentAmp * sin(2 * PI * currentFreq * elapsedSec + currentPhase);
+            setSetpointDeg(angleDeg);
+
+            // Check duration if specified
+            if(duration > 0 && (currentTime - startTime) >= duration) {
+                //portENTER_CRITICAL(&parameterMux);
+                oscillationActive = false;
+                //portEXIT_CRITICAL(&parameterMux);
+            }
         }
     }
     
@@ -73,7 +116,6 @@ void MotorPID::update() {
     updatePID();
     controlMotor();
 }
-
 
 void MotorPID::setSetpointDeg(float degrees) {
     Setpoint = (degrees * cfg.pulsesPerRev) / 360.0f;
@@ -94,7 +136,6 @@ void MotorPID::updatePID() {
 void MotorPID::controlMotor() {
     float error = Setpoint - Input;
     
-    // Use valid motorControl pointer
     if(abs(error) <= BRAKING_THRESHOLD) {
         motorControl->motorStop(motorNum);
     } else if(Output > 0) {
