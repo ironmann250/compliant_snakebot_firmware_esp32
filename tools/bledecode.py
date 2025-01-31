@@ -30,21 +30,8 @@ def decode_ble_data(data_hex):
 # Example usage
 decode_ble_data("a5 7f 7f 81 7f 5a")
 
-# sent data: a5 7f 7f 81 7f 5a
-# ouput log:
-# 08:57:02.574 -> [RAW BLE] Received byte: 0xa5
-# 08:57:02.574 -> [PARSER] Start byte found
-# 08:57:02.574 -> [RAW BLE] Received byte: 0x7f
-# 08:57:02.574 -> [PARSER] Collected byte 1: 0x7f
-# 08:57:02.574 -> [RAW BLE] Received byte: 0x7f
-# 08:57:02.574 -> [PARSER] Collected byte 2: 0x7f
-# 08:57:02.574 -> [RAW BLE] Received byte: 0x81
-# 08:57:02.574 -> [PARSER] Collected byte 3: 0x81
-# 08:57:02.574 -> [RAW BLE] Received byte: 0x7f
-# 08:57:02.574 -> [PARSER] Collected byte 4: 0x7f
-# 08:57:02.574 -> [RAW BLE] Received byte: 0x5a
-# 08:57:02.574 -> [PARSER] End byte found
-# 08:57:02.574 -> [PARSER] Calculated checksum: 0x24, Received: 0x7f
-# 08:57:02.574 -> [PARSER] Checksum mismatch
-
-# looks like the checksum is being calculated wrongly
+# A5 7F 7F 81 7F 5A
+#   │   │   │   │
+#   │   │   │   └── Footer
+#   │   │   └── Checksum (sum of 0x7F + 0x7F + 0x81 = 0x17F → 0x7F)
+#   └── Data Bytes (3 bytes)
