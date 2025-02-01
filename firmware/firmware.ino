@@ -16,6 +16,8 @@
 #include "motorConfig.h"
 #include "tuning.h"
 #include "bleCom.h"
+#include "utils.h"
+
 
 MotorPID motor1, motor2;
 TuneSet<> tuning;
@@ -72,7 +74,6 @@ void loop() {
     tuning.readSerial();
     Command cmd = updateBLE();
     
-
     if(cmd.isvalid) {
         Serial.print("Received valid bytes: ");
         for(int i = 0; i < MSG_BYTE_LEN; i++) {
@@ -82,7 +83,6 @@ void loop() {
             Serial.print(" ");
         }
         Serial.println();
-
         // Example command handling:
         // byte0 = command type
         // byte1 = motor ID
@@ -92,6 +92,19 @@ void loop() {
         // int8_t value = cmd.bytes[2];
 
         // Add your command handling logic here
+    }
+
+    static unsigned long lastSend = 0;
+    if(millis() - lastSend > 10) {
+        lastSend = millis();
+        
+        // Create sample data (position and velocity)
+        int32_t dataToSend[] = {
+            static_cast<int32_t>(motor1.Input),
+            static_cast<int32_t>(motor2.Input)
+        };
+        
+        bleSendIntegers(dataToSend);
     }
 
     // Handle command based on type

@@ -69,7 +69,61 @@ Command updateBLE() {
     return result;
 }
 
-// blePrintf remains unchanged
+void bleSendIntegers(const int32_t* values) {
+    const uint8_t numIntegers = DATA_LEN / 4;
+    const uint8_t packetSize = 3 + DATA_LEN;
+    uint8_t packet[packetSize];
+    
+    // Header
+    packet[0] = 0xA5;
+    
+    // Pack data bytes in little-endian format
+    uint8_t checksum = 0;
+    for(uint8_t i = 0; i < numIntegers; i++) {
+        uint32_t val = static_cast<uint32_t>(values[i]);
+        // Little-endian byte order
+        packet[1 + i*4] = val & 0xFF;          // LSB
+        packet[2 + i*4] = (val >> 8) & 0xFF;
+        packet[3 + i*4] = (val >> 16) & 0xFF;
+        packet[4 + i*4] = (val >> 24) & 0xFF;  // MSB
+        
+        // Update checksum with all 4 bytes
+        for(uint8_t j = 0; j < 4; j++) {
+            checksum += packet[1 + i*4 + j];
+        }
+    }
+
+    // Add checksum and footer
+    packet[1 + DATA_LEN] = checksum & 0xFF;
+    packet[2 + DATA_LEN] = 0x5A;
+    if (BLE_DEBUG)
+    {
+        // Debug output (now shows both formats)
+        Serial.printf("[%lu] Sending BLE packet: ", millis());
+        for(uint8_t i = 0; i < packetSize; i++) {
+            Serial.printf("%02X ", packet[i]);
+        }
+        Serial.printf("\nRaw values: ");
+        for(uint8_t i = 0; i < numIntegers; i++) {
+            Serial.printf("%d (0x%08X) ", values[i], values[i]);
+        }
+        Serial.printf("\nLittle-endian bytes:\n");
+        for(uint8_t i = 0; i < numIntegers; i++) {
+            Serial.printf("  Value %d: %02X %02X %02X %02X\n", i+1,
+                        packet[1 + i*4],     // LSB
+                        packet[2 + i*4],
+                        packet[3 + i*4],
+                        packet[4 + i*4]);    // MSB
+        }
+        Serial.printf("Checksum: %02X\n\n", checksum & 0xFF);
+    }
+    // Send packet
+    SerialBLE.write(packet, packetSize);
+    SerialBLE.flush();
+}
+
+
+
 
 
 void blePrintf(const char *fmt, ...) {
