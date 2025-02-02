@@ -14,8 +14,8 @@
 #define DATA_LEN 16  // Default: 2 integers (4 bytes each)
 #endif
 
-#define BYTE_OBJECTS_LEN 3    // Example length for bytes
-#define FLOAT_OBJECTS_LEN 2   // Example length for floats
+#define BYTE_OBJECTS_LEN 6    // Example length for bytes
+#define FLOAT_OBJECTS_LEN 4   // Example length for floats
 
 struct Command {
     bool isvalid;                               // Checksum validation flag

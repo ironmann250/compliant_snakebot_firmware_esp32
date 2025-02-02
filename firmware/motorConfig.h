@@ -24,7 +24,7 @@ public:
     float Output = 0.0f;
     float Kp = 1.32f;
     float Ki = 10.28f;
-    float Kd = 0.02f;
+    float Kd = 0.10f;
 
     void init(const Config& config);
     void update();

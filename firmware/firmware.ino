@@ -12,6 +12,8 @@
 #define BIN_2 35
 #define SLEEP_PIN 39
 
+#define HEATER1_PIN 40  
+#define HEATER2_PIN 41
 #include <Arduino.h>
 #include "motorConfig.h"
 #include "tuning.h"
@@ -28,6 +30,8 @@ const long interval = 10;  // interval in milliseconds
 
 unsigned long previousMillis2 = 0;
 const long interval2 = 500;
+float freq1 = 0.0f, freq2 = 0.0f, phase1 = 0.0f, phase2 = 0.0f, amp1 = 0.0f, amp2 = 0.0f;
+int8_t mode=0, mot_enabled=0, enable_heater1=0, enable_heater2=0, enable_auto=0;
 
 void setup() {
     Serial.begin(115200);
@@ -59,11 +63,29 @@ void setup() {
 
     motor1.setSetpointDeg(0.0f);
     motor2.setSetpointDeg(0.0f);
-    
+
+    Serial.println("Zeroing out motor 1");
+    printEncoder();
+    do {
+    motor1.update();
+    printEncoder();
+    }
+    while (motor1.Input!=0.0f);
+    Serial.println("Zeroing out motor 2");
+    printEncoder();
+    do {
+    motor2.update();
+    printEncoder(); 
+    }
+    while (motor2.Input!=0.0f); // Wait for motors to be initialized
+    Serial.println("motors zeroed");
+    printEncoder();
+
     // Initialize BLE
     initBLE("SnakeRobot");
-    motor1.startSinusoidalOscillation(0.3f, 180.0f);
-    motor2.startSinusoidalOscillation(0.3f, 180.0f);
+    // zero out encoders
+    motor1.startSinusoidalOscillation(0.15f, 180.0f);
+    motor2.startSinusoidalOscillation(0.15f, 180.0f);
     Serial.println("Setup complete");
 }
 
@@ -73,26 +95,42 @@ void loop() {
     unsigned long currentMillis2 = millis();
     tuning.readSerial();
     Command cmd = updateBLE();
+    //debugPrint();
     
-    
-    if (cmd.isvalid) {
+    if (cmd.isvalid) { //mode, input, mot, heat1, heat2, auto...freq,amp, ph, pos
+
+    //enable heaters, outside because it needs unconstrained fast reading
+    digitalWrite(HEATER1_PIN, static_cast<int8_t>(cmd.bytes[3]) ? HIGH : LOW); //replace with timed func 
+    digitalWrite(HEATER2_PIN, static_cast<int8_t>(cmd.bytes[4]) ? HIGH : LOW); //replace with timed func
+      if (static_cast<int8_t>(cmd.bytes[1])) // if input enabled
+      {
+        //select motor
+        MotorPID& motor = (static_cast<int8_t>(cmd.bytes[2]) == 0) ? motor1 : motor2;
+        
+        if (static_cast<int8_t>(cmd.bytes[0])) // mode 0 do sinusoidal else do positional
+          {
+            if motor.
+          }
+
         Serial.println("Valid Packet Received:");
         Serial.print("Bytes: ");
         for (int i = 0; i < BYTE_OBJECTS_LEN; i++) {
-            Serial.printf("%d ", static_cast<int8_t>(cmd.bytes[i]));
+            int8_t inp=static_cast<int8_t>(cmd.bytes[i]);
+            Serial.printf("%d ", inp);
         }
         Serial.println();
         Serial.print("Floats: ");
         for (int i = 0; i < FLOAT_OBJECTS_LEN; i++) {
-            Serial.println(cmd.floats[i], 2);  // Print floats with precision
+            Serial.println(cmd.floats[i], 3);  // Print floats with precision
         }
-        motor1.setOscillationPhase(cmd.floats[1]);
-        motor2.setOscillationPhase(cmd.floats[0]);
+        //motor1.setOscillationPhase(cmd.floats[1]);
+        //motor2.setOscillationPhase(cmd.floats[0]);
+      }
     }
 
 
     static unsigned long lastSend = 0;
-    if(millis() - lastSend > 10) {
+    if(millis() - lastSend > 30) {
         lastSend = millis();
         
         // Create sample data (position and velocity)
@@ -192,4 +230,16 @@ void debugPrint()
     Serial.println(motor2.Kd);
 }
 
-    
+void printEncoder()
+{
+  Serial.print(motor1.Setpoint); Serial.print("\t");
+  Serial.print(motor1.Input);    Serial.print("\t");
+  Serial.print(motor2.Setpoint); Serial.print("\t");
+  Serial.println(motor2.Input);  
+}
+
+
+void updateHardware() 
+{
+  
+}
