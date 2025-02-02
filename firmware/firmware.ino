@@ -62,8 +62,8 @@ void setup() {
     
     // Initialize BLE
     initBLE("SnakeRobot");
-    motor1.startSinusoidalOscillation(0.1f, 180.0f);
-    motor2.startSinusoidalOscillation(0.1f, 180.0f);
+    motor1.startSinusoidalOscillation(0.3f, 180.0f);
+    motor2.startSinusoidalOscillation(0.3f, 180.0f);
     Serial.println("Setup complete");
 }
 
@@ -74,25 +74,22 @@ void loop() {
     tuning.readSerial();
     Command cmd = updateBLE();
     
-    if(cmd.isvalid) {
-        Serial.print("Received valid bytes: ");
-        for(int i = 0; i < MSG_BYTE_LEN; i++) {
-            // Convert to signed byte
-            int8_t val = static_cast<int8_t>(cmd.bytes[i]);
-            Serial.print(val);
-            Serial.print(" ");
+    
+    if (cmd.isvalid) {
+        Serial.println("Valid Packet Received:");
+        Serial.print("Bytes: ");
+        for (int i = 0; i < BYTE_OBJECTS_LEN; i++) {
+            Serial.printf("%d ", static_cast<int8_t>(cmd.bytes[i]));
         }
         Serial.println();
-        // Example command handling:
-        // byte0 = command type
-        // byte1 = motor ID
-        // byte2 = value
-        // uint8_t command = cmd.bytes[0];
-        // uint8_t motorID = cmd.bytes[1];
-        // int8_t value = cmd.bytes[2];
-
-        // Add your command handling logic here
+        Serial.print("Floats: ");
+        for (int i = 0; i < FLOAT_OBJECTS_LEN; i++) {
+            Serial.println(cmd.floats[i], 2);  // Print floats with precision
+        }
+        motor1.setOscillationPhase(cmd.floats[1]);
+        motor2.setOscillationPhase(cmd.floats[0]);
     }
+
 
     static unsigned long lastSend = 0;
     if(millis() - lastSend > 10) {
@@ -101,7 +98,9 @@ void loop() {
         // Create sample data (position and velocity)
         int32_t dataToSend[] = {
             static_cast<int32_t>(motor1.Input),
-            static_cast<int32_t>(motor2.Input)
+            static_cast<int32_t>(motor1.Setpoint),
+            static_cast<int32_t>(motor2.Input),
+            static_cast<int32_t>(motor2.Setpoint)
         };
         
         bleSendIntegers(dataToSend);

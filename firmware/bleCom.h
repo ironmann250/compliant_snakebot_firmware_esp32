@@ -11,13 +11,19 @@
 #define MSG_BYTE_LEN 3
 #endif
 #ifndef DATA_LEN
-#define DATA_LEN 8  // Default: 2 integers (4 bytes each)
+#define DATA_LEN 16  // Default: 2 integers (4 bytes each)
 #endif
+
+#define BYTE_OBJECTS_LEN 3    // Example length for bytes
+#define FLOAT_OBJECTS_LEN 2   // Example length for floats
+
 struct Command {
-    bool isvalid;                   // Checksum validation flag
-    uint8_t bytes[MSG_BYTE_LEN];    // Raw data bytes (header/footer excluded)
+    bool isvalid;                               // Checksum validation flag
+    uint8_t bytes[BYTE_OBJECTS_LEN];            // Array to hold byte data
+    float floats[FLOAT_OBJECTS_LEN];            // Array to hold float data
     Command() : isvalid(false) {
         memset(bytes, 0, sizeof(bytes));
+        memset(floats, 0, sizeof(floats));
     }
 };
 

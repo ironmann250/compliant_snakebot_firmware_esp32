@@ -16,12 +16,16 @@ Command updateBLE() {
     Command result;
     static enum {
         WAIT_HEADER,
-        COLLECT_DATA,
+        COLLECT_BYTES,
+        COLLECT_FLOATS,
+        GET_CHECKSUM,
         CHECK_FOOTER
     } state = WAIT_HEADER;
-    
-    static uint8_t dataIndex = 0;
-    static uint8_t dataBuffer[MSG_BYTE_LEN];
+
+    static uint8_t byteIndex = 0;
+    static uint8_t floatByteIndex = 0;
+    static uint8_t floatBuffer[4];  // Buffer to collect bytes for a single float
+    static uint8_t checksum = 0;
     static uint8_t receivedChecksum = 0;
 
     while (SerialBLE.available()) {
@@ -29,45 +33,63 @@ Command updateBLE() {
 
         switch (state) {
             case WAIT_HEADER:
-                if (c == HEADER) {
-                    state = COLLECT_DATA;
-                    dataIndex = 0;
+                if (c == 0xA5) {  // HEADER
+                    state = COLLECT_BYTES;
+                    byteIndex = 0;
+                    floatByteIndex = 0;
+                    checksum = 0;
                 }
                 break;
 
-            case COLLECT_DATA:
-                if (dataIndex < MSG_BYTE_LEN) {
-                    dataBuffer[dataIndex++] = c;
-                    //Serial.printf("%02x",c); Serial.print(",");
-                } else {
-                   // get CHECKSUM complete
-                    receivedChecksum = c;
-                    state = CHECK_FOOTER; //check footer
-                    //Serial.printf("%02x",c);Serial.println();
+            case COLLECT_BYTES:
+                if (byteIndex < BYTE_OBJECTS_LEN) {
+                    result.bytes[byteIndex++] = c;
+                    checksum += c;
                 }
+                if (byteIndex == BYTE_OBJECTS_LEN) {
+                    state = COLLECT_FLOATS;
+                }
+                break;
+
+            case COLLECT_FLOATS:
+                if (floatByteIndex < FLOAT_OBJECTS_LEN * 4) {
+                    floatBuffer[floatByteIndex % 4] = c;
+                    checksum += c;
+                    floatByteIndex++;
+                    if ((floatByteIndex % 4) == 0) {
+                        // Convert 4 bytes to a float
+                        uint32_t floatInt = ((uint32_t)floatBuffer[3] << 24) |
+                                            ((uint32_t)floatBuffer[2] << 16) |
+                                            ((uint32_t)floatBuffer[1] << 8) |
+                                            ((uint32_t)floatBuffer[0]);
+                        float convertedFloat;
+                        memcpy(&convertedFloat, &floatInt, sizeof(float));
+                        result.floats[(floatByteIndex / 4) - 1] = convertedFloat;
+                    }
+                }
+                if (floatByteIndex == FLOAT_OBJECTS_LEN * 4) {
+                    state = GET_CHECKSUM;
+                }
+                break;
+
+            case GET_CHECKSUM:
+                receivedChecksum = c;
+                state = CHECK_FOOTER;
                 break;
 
             case CHECK_FOOTER:
-                if (c == FOOTER) {
-                    // Calculate checksum (sum of data bytes)
-                    uint8_t calculatedChecksum = 0;
-                    for (size_t i = 0; i < MSG_BYTE_LEN; i++) {
-                        calculatedChecksum += dataBuffer[i];
-                        //Serial.printf("%02x",dataBuffer[i]); Serial.print(",");
-                    }
-                    calculatedChecksum &= 0xFF;
-                    //Serial.println(calculatedChecksum);
-                    // Validate and populate result
-                    result.isvalid = (calculatedChecksum == receivedChecksum);
-                    memcpy(result.bytes, dataBuffer, MSG_BYTE_LEN);
+                if (c == 0x5A) {  // FOOTER
+                    checksum &= 0xFF;
+                    result.isvalid = (checksum == receivedChecksum);
                 }
-                state = WAIT_HEADER; // Reset for next packet
+                state = WAIT_HEADER;  // Reset for next packet
                 break;
         }
     }
 
     return result;
 }
+
 
 void bleSendIntegers(const int32_t* values) {
     const uint8_t numIntegers = DATA_LEN / 4;
