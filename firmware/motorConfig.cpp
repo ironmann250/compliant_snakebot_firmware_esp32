@@ -25,6 +25,8 @@ void MotorPID::init(const Config& config) {
     motorControl = &::motorControl;
     motorNum = config.motorNum;
 
+    
+
     pid = QuickPID(&Input, &Output, &Setpoint, Kp, Ki, Kd,
                   QuickPID::pMode::pOnError,
                   QuickPID::dMode::dOnMeas,

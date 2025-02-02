@@ -35,7 +35,8 @@ int8_t mode=0, mot_enabled=0, enable_heater1=0, enable_heater2=0, enable_auto=0;
 
 void setup() {
     Serial.begin(115200);
-    
+    pinMode(HEATER1_PIN, OUTPUT);
+    pinMode(HEATER2_PIN, OUTPUT);
     // Initialize motor system with correct pin mapping
     motorInit(
         ENCODER1_PIN_A, ENCODER1_PIN_B,
@@ -84,8 +85,8 @@ void setup() {
     // Initialize BLE
     initBLE("SnakeRobot");
     // zero out encoders
-    motor1.startSinusoidalOscillation(0.15f, 180.0f);
-    motor2.startSinusoidalOscillation(0.15f, 180.0f);
+    //motor1.startSinusoidalOscillation(0.15f, 180.0f);
+    //motor2.startSinusoidalOscillation(0.15f, 180.0f);
     Serial.println("Setup complete");
 }
 
@@ -95,7 +96,7 @@ void loop() {
     unsigned long currentMillis2 = millis();
     tuning.readSerial();
     Command cmd = updateBLE();
-    //debugPrint();
+    debugPrint();
     
     if (cmd.isvalid) { //mode, input, mot, heat1, heat2, auto...freq,amp, ph, pos
 
@@ -104,27 +105,60 @@ void loop() {
     digitalWrite(HEATER2_PIN, static_cast<int8_t>(cmd.bytes[4]) ? HIGH : LOW); //replace with timed func
       if (static_cast<int8_t>(cmd.bytes[1])) // if input enabled
       {
+        if (!static_cast<int8_t>(cmd.bytes[5])) //auto or move by joystick
+        {
         //select motor
-        MotorPID& motor = (static_cast<int8_t>(cmd.bytes[2]) == 0) ? motor1 : motor2;
-        
-        if (static_cast<int8_t>(cmd.bytes[0])) // mode 0 do sinusoidal else do positional
-          {
-            if motor.
-          }
+            MotorPID& motor = (static_cast<int8_t>(cmd.bytes[2]) == 0) ? motor1 : motor2;
+            //update vals //freq, amp, ph, pos
+            
+            if (static_cast<int8_t>(cmd.bytes[0])) // mode 1 do sinusoidal else do positional
+              {
+                if (motor.isOscillating() == 0) // if not oscillating
+                {
+                  motor.startSinusoidalOscillation(cmd.floats[0], cmd.floats[1], cmd.floats[2]);
+                }
+                else
+                {
+                    if (motor.oscillationFrequency!=cmd.floats[0]){
+                        motor.setOscillationFrequency(cmd.floats[0]);
+                    }
+                    
+                    if (motor.oscillationAmplitude!=cmd.floats[1]){
+                        motor.setOscillationAmplitude(cmd.floats[1]);
+                    }
+                    
+                    if (motor.oscillationPhase!=cmd.floats[2]){
+                        motor.setOscillationPhase(cmd.floats[2]);
+                    }
+                    
+                }
+              }
+              else
+              {
+                motor.stopSinusoidalOscillation();
+                motor.goTo(int(cmd.floats[3]));
+              }
 
-        Serial.println("Valid Packet Received:");
-        Serial.print("Bytes: ");
-        for (int i = 0; i < BYTE_OBJECTS_LEN; i++) {
-            int8_t inp=static_cast<int8_t>(cmd.bytes[i]);
-            Serial.printf("%d ", inp);
-        }
-        Serial.println();
-        Serial.print("Floats: ");
-        for (int i = 0; i < FLOAT_OBJECTS_LEN; i++) {
-            Serial.println(cmd.floats[i], 3);  // Print floats with precision
-        }
-        //motor1.setOscillationPhase(cmd.floats[1]);
-        //motor2.setOscillationPhase(cmd.floats[0]);
+            Serial.println("Valid Packet Received:");
+            Serial.print("Bytes: ");
+            for (int i = 0; i < BYTE_OBJECTS_LEN; i++) {
+                int8_t inp=static_cast<int8_t>(cmd.bytes[i]);
+                Serial.printf("%d ", inp);
+            }
+            Serial.println();
+            Serial.print("Floats: ");
+            for (int i = 0; i < FLOAT_OBJECTS_LEN; i++) {
+                Serial.println(cmd.floats[i], 3);  // Print floats with precision
+            }
+            //motor1.setOscillationPhase(cmd.floats[1]);
+            //motor2.setOscillationPhase(cmd.floats[0]);
+          }
+          else //auto mode
+          {
+            float x=float(static_cast<int8_t>(cmd.bytes[6]));
+            float y=float(static_cast<int8_t>(cmd.bytes[7]));
+            
+          }
       }
     }
 
@@ -143,6 +177,9 @@ void loop() {
         
         bleSendIntegers(dataToSend);
     }
+
+    motor1.update();
+    motor2.update();
 
     // Handle command based on type
     // switch(cmd.cmd) {

@@ -3,7 +3,7 @@
 #include "TrackEncoder.h"
 #include <ESP32MotorControl.h>
 #include <QuickPID.h>
-#define BRAKING_THRESHOLD 2
+#define BRAKING_THRESHOLD 0
 
 void motorInit(int enc1A, int enc1B, int enc2A, int enc2B,
               int ain1_1, int ain1_2, int ain2_1, int ain2_2,
@@ -25,7 +25,10 @@ public:
     float Kp = 1.32f;
     float Ki = 10.28f;
     float Kd = 0.10f;
-
+    float oscillationFrequency = 0.0f;
+    float oscillationAmplitude = 0.0f;
+    float oscillationPhase = 0.0f;
+    
     void init(const Config& config);
     void update();
     void setSetpointDeg(float degrees);
@@ -50,9 +53,7 @@ private:
     Config cfg;
     
     // Oscillation parameters with mutex protection
-    float oscillationFrequency = 0.0f;
-    float oscillationAmplitude = 0.0f;
-    float oscillationPhase = 0.0f;
+    
     uint32_t oscillationStartTime = 0;
     uint32_t oscillationDuration = 0;
     bool oscillationActive = false;
