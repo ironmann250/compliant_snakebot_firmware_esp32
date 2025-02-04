@@ -96,7 +96,7 @@ void loop() {
     unsigned long currentMillis2 = millis();
     tuning.readSerial();
     Command cmd = updateBLE();
-    debugPrint();
+    //debugPrint();
     
     if (cmd.isvalid) { //mode, input, mot, heat1, heat2, auto...freq,amp, ph, pos
 
@@ -109,6 +109,12 @@ void loop() {
         {
         //select motor
             MotorPID& motor = (static_cast<int8_t>(cmd.bytes[2]) == 0) ? motor1 : motor2;
+            if (static_cast<int8_t>(cmd.bytes[2]) == 0) {
+                freq1 = cmd.floats[0]; amp1 = cmd.floats[1]; phase1 =cmd.floats[2];
+            }
+            else {
+                freq2 = cmd.floats[0]; amp2 = cmd.floats[1]; phase2 =cmd.floats[2];
+            }
             //update vals //freq, amp, ph, pos
             
             if (static_cast<int8_t>(cmd.bytes[0])) // mode 1 do sinusoidal else do positional
@@ -155,9 +161,26 @@ void loop() {
           }
           else //auto mode
           {
-            float x=float(static_cast<int8_t>(cmd.bytes[6]));
-            float y=float(static_cast<int8_t>(cmd.bytes[7]));
+            float x=mapfloat(float(static_cast<int8_t>(cmd.bytes[6])), -128, 127, -5, 5);
+            float y=mapfloat(float(static_cast<int8_t>(cmd.bytes[7])), -128, 127, -5, 5);
+            if (motor1.isOscillating() == 0) // if not oscillating
+                {
+                  motor1.startSinusoidalOscillation(freq1, amp1, phase1);
+                }
+            if (motor2.isOscillating() == 0) // if not oscillating
+                {
+                  motor2.startSinusoidalOscillation(freq2, amp2, phase2);
+                }
+
+                if (motor1.oscillationFrequency!=x){
+                  motor1.setOscillationFrequency(x);
+                  }
+                if (motor2.oscillationFrequency!=y){
+                  motor2.setOscillationFrequency(y);
+                  }
+
             
+
           }
       }
     }
