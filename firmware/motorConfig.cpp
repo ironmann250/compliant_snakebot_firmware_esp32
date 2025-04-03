@@ -102,6 +102,10 @@ void MotorPID::update() {
             uint32_t currentTime = millis();
             float elapsedSec = (currentTime - startTime) / 1000.0f;
             float angleDeg = currentAmp * sin(2 * PI * currentFreq * elapsedSec + currentPhase);
+            // if (angleDeg < -3)
+            // {
+            //   angleDeg=0;
+            // }
             setSetpointDeg(angleDeg);
 
             // Check duration if specified

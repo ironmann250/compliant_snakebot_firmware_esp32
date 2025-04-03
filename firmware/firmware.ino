@@ -1,8 +1,8 @@
-#define ENCODER1_PIN_A 1
-#define ENCODER1_PIN_B 2
+#define ENCODER1_PIN_A 2
+#define ENCODER1_PIN_B 1
 #define ENCODER2_PIN_A 11
 #define ENCODER2_PIN_B 12
-#define RESET_COUNT_ON_BOOT 0
+#define RESET_COUNT_ON_BOOT 1
 
 #define LED_PIN 7
 #define PWM_2 41
@@ -26,7 +26,7 @@ TuneSet<> tuning;
 
 
 unsigned long previousMillis = 0;
-const long interval = 10;  // interval in milliseconds
+const long interval = 100;  // interval in milliseconds
 
 unsigned long previousMillis2 = 0;
 const long interval2 = 500;
@@ -35,8 +35,10 @@ int8_t mode=0, mot_enabled=0, enable_heater1=0, enable_heater2=0, enable_auto=0;
 
 void setup() {
     Serial.begin(115200);
+    //while (!Serial);
     pinMode(HEATER1_PIN, OUTPUT);
     pinMode(HEATER2_PIN, OUTPUT);
+    Serial.println("starting");
     // Initialize motor system with correct pin mapping
     motorInit(
         ENCODER1_PIN_A, ENCODER1_PIN_B,
@@ -45,13 +47,13 @@ void setup() {
         BIN_2, BIN_1,  // Motor 2 pins (BIN_2 = 35, BIN_1 = 36)
         SLEEP_PIN,
         RESET_COUNT_ON_BOOT,
-        8344
+        8344 //revs per cycle
     );
-
+    Serial.println("starting");
     // Initialize motor controllers with explicit configurations
     motor1.init({0, AIN_2, AIN_1, 8344}); // Motor 1 (num 0) uses AIN_2 & AIN_1
     motor2.init({1, BIN_2, BIN_1, 8344}); // Motor 2 (num 1) uses BIN_2 & BIN_1
-
+    Serial.println("starting");
     // Tuning setup
     tuning.add("tar1", motor1.Setpoint);
     tuning.add("kp1", motor1.Kp);
@@ -61,24 +63,24 @@ void setup() {
     tuning.add("kp2", motor2.Kp);
     tuning.add("ki2", motor2.Ki);
     tuning.add("kd2", motor2.Kd);
-
+    Serial.println("starting");
     motor1.setSetpointDeg(0.0f);
     motor2.setSetpointDeg(0.0f);
 
-    Serial.println("Zeroing out motor 1");
-    printEncoder();
-    do {
-    motor1.update();
-    printEncoder();
-    }
-    while (motor1.Input!=0.0f);
     Serial.println("Zeroing out motor 2");
     printEncoder();
     do {
     motor2.update();
+    printEncoder();
+    }
+    while (motor2.Input!=0.0f);
+    Serial.println("Zeroing out motor 1");
+    printEncoder();
+    do {
+    motor1.update();
     printEncoder(); 
     }
-    while (motor2.Input!=0.0f); // Wait for motors to be initialized
+    while (motor1.Input!=0.0f); // Wait for motors to be initialized
     Serial.println("motors zeroed");
     printEncoder();
 
@@ -260,7 +262,7 @@ void loop() {
         previousMillis = currentMillis;
         //motor1.update();
         //motor2.update();
-        //debugPrint();
+        debugPrint();
     }
 
     if (currentMillis2 - previousMillis2 >= interval2) {

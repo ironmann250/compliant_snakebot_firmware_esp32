@@ -22,9 +22,9 @@ public:
     float Setpoint = 0.0f;
     float Input = 0.0f;
     float Output = 0.0f;
-    float Kp = 1.32f;
-    float Ki = 10.28f;
-    float Kd = 0.10f;
+    float Kp = 1.43f; //1.32f //on 5v //1.43f //on 8.4v
+    float Ki = 16.64f; //10.28f //on 5v //16.64f //on 8.4v
+    float Kd = 0.10f; //0.10 //on 5v  //0.02f //on 8.4v
     float oscillationFrequency = 0.0f;
     float oscillationAmplitude = 0.0f;
     float oscillationPhase = 0.0f;
